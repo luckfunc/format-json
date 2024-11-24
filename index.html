@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Format Json</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 20px;
+      background: #6366f1;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+    }
+    .container {
+      width: 80vw;
+      height: 80vh;
+      margin: 0 auto;
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      box-sizing: border-box;
+      overflow: hidden;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+      margin: 0 0 20px 0;
+      font-size: 24px;
+      font-weight: 600;
+    }
+    .content-wrapper {
+      display: flex;
+      width: 100%;
+      gap: 30px;
+      flex: 1;
+      min-height: 0;
+      margin-bottom: 60px;
+    }
+    .input-section {
+      display: flex;
+      width: calc(50% - 15px);
+      min-height: 0;
+    }
+    .output-section {
+      display: flex;
+      width: calc(50% - 15px);
+      min-height: 0;
+    }
+    textarea {
+      flex: 1;
+      width: 100%;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      resize: none;
+      font-family: monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      background: #f9fafb;
+      padding: 15px;
+      overflow-y: auto;
+      white-space: pre;
+      tab-size: 2;
+    }
+    textarea:focus {
+      outline: none;
+      border-color: #6366f1;
+    }
+    .button-group {
+      position: absolute;
+      bottom: 30px;
+      left: 30px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    button:hover {
+      opacity: 0.9;
+    }
+    #formatButton {
+      background: #6366f1;
+      color: white;
+    }
+    .copy-button {
+      background: #10b981;
+      color: white;
+    }
+    pre {
+      flex: 1;
+      width: 100%;
+      margin: 0;
+      padding: 15px;
+      background: #1e293b;
+      color: #e2e8f0;
+      border-radius: 8px;
+      font-family: monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      overflow-y: auto;
+      white-space: pre;
+    }
+    pre span.line {
+      display: block;
+      color: #d4d4d8;
+    }
+    pre span.line::before {
+      content: attr(data-line);
+      color: #71717a;
+      margin-right: 12px;
+      user-select: none;
+    }
+    .error {
+      color: #ef4444;
+      font-size: 14px;
+      margin-left: 20px;
+      display: none;
+      padding: 8px 12px;
+      background: rgba(239, 68, 68, 0.1);
+      border-radius: 6px;
+    }
+    .json-string { color: #a5d6ff; }
+    .json-number { color: #ff9580; }
+    .json-boolean { color: #ff9580; }
+    .json-null { color: #ff9580; }
+    .json-key { color: #79c0ff; }
+    .json-punctuation { color: #e2e8f0; }
+    textarea::-webkit-scrollbar,
+    pre::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    textarea::-webkit-scrollbar-thumb,
+    pre::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    textarea::-webkit-scrollbar-track,
+    pre::-webkit-scrollbar-track {
+      background: transparent;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>JSON格式化工具</h1>
+    <div class="content-wrapper">
+      <div class="input-section">
+        <textarea id="jsonInput" placeholder="在此粘贴您的JSON..."></textarea>
+      </div>
+      <div class="output-section">
+        <pre id="output"></pre>
+      </div>
+    </div>
+    <div class="button-group">
+      <button id="formatButton">格式化JSON</button>
+      <button class="copy-button">复制结果</button>
+      <div id="error" class="error"></div>
+    </div>
+  </div>
+
+  <script>
+    const input = document.getElementById('jsonInput');
+    const formatButton = document.getElementById('formatButton');
+    const output = document.getElementById('output');
+    const error = document.getElementById('error');
+    const copyButton = document.querySelector('.copy-button');
+
+    function highlightJSON(json) {
+      if (!json) return '';
+      
+      json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      
+      return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+        let cls = 'json-number';
+        if (/^"/.test(match)) {
+          if (/:$/.test(match)) {
+            cls = 'json-key';
+            match = match.replace(/:$/, '');
+          } else {
+            cls = 'json-string';
+          }
+        } else if (/true|false/.test(match)) {
+          cls = 'json-boolean';
+        } else if (/null/.test(match)) {
+          cls = 'json-null';
+        }
+        
+        if (cls === 'json-key') {
+          return `<span class="${cls}">${match}</span><span class="json-punctuation">:</span>`;
+        }
+        return `<span class="${cls}">${match}</span>`;
+      }).replace(/([{}\[\],])/g, '<span class="json-punctuation">$1</span>');
+    }
+
+    function formatWithLineNumbers(json) {
+      if (!json) return '';
+      
+      const highlighted = highlightJSON(json);
+      return highlighted.split('\n').map((line, i) => 
+        `<span class="line" data-line="${i + 1}">${line}</span>`
+      ).join('');
+    }
+
+    formatButton.addEventListener('click', () => {
+      const json = input.value.trim();
+      error.style.display = 'none';
+      output.innerHTML = '';
+
+      if (!json) {
+        error.textContent = '请输入JSON数据';
+        error.style.display = 'block';
+        return;
+      }
+
+      try {
+        const parsed = JSON.parse(json);
+        const formatted = JSON.stringify(parsed, null, 2);
+        
+        output.innerHTML = formatWithLineNumbers(formatted);
+      } catch (e) {
+        error.textContent = '无效的JSON: ' + e.message;
+        error.style.display = 'block';
+        output.innerHTML = '';
+      }
+    });
+
+    copyButton.addEventListener('click', async () => {
+      try {
+        const textToCopy = output.textContent || '';
+        await navigator.clipboard.writeText(textToCopy);
+        copyButton.textContent = '已复制！';
+        setTimeout(() => {
+          copyButton.textContent = '复制结果';
+        }, 2000);
+      } catch (err) {
+        console.error('复制失败:', err);
+        error.textContent = '复制失败: ' + err.message;
+        error.style.display = 'block';
+      }
+    });
+
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        formatButton.click();
+      }
+    });
+  </script>
+</body>
+</html>
